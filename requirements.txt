@@ -1,0 +1,9 @@
+pandas
+numpy
+jupyter
+scikit-learn
+Pyarrow
+konlpy
+gensim
+matplotlib
+pyprnt
