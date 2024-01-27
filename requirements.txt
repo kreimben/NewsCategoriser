@@ -7,3 +7,4 @@ konlpy
 gensim
 matplotlib
 pyprnt
+tqdm
