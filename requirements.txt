@@ -8,3 +8,4 @@ gensim
 matplotlib
 pyprnt
 tqdm
+imbalanced-learn
