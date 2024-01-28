@@ -1,4 +1,8 @@
-import re
+import numpy as np
+from gensim.models import Word2Vec
+from konlpy.tag import Okt
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from tqdm import tqdm
 
 ## 출처: 여러 블로그
 STOP_WORDS = ['생각이다', '다시말하면', '제', '줄', '에', '이라면', '안다', '지', '못하다', '얼마간', '제외하고', '몇', '오자마자', '대하면', '이어서', '결국',
@@ -47,36 +51,51 @@ STOP_WORDS = ['생각이다', '다시말하면', '제', '줄', '에', '이라면
 
 
 def clean_punc(text):
-    punct = "/-'?!.,#$%\'()*+-/:;<=>@[\\]^_`{|}~" + '""“”’' + '∞θ÷α•à−β∅³π‘₹´°£€\×™√²—–&'
+    punct = "·/-'?!.,#$%\'()*+-/:;<=>@[\\]^_`{|}~" + '""“”’' + '∞θ÷α•à−β∅³π‘₹´°£€\×™√²—–&'
     mapping = {"‘": "'", "₹": "e", "´": "'", "°": "", "€": "e", "™": "tm", "√": " sqrt ", "×": "x", "²": "2",
                "—": "-", "–": "-", "’": "'", "_": "-", "`": "'", '“': '"', '”': '"', '“': '"', "£": "e",
                '∞': 'infinity', 'θ': 'theta', '÷': '/', 'α': 'alpha', '•': '.', 'à': 'a', '−': '-', 'β': 'beta',
-               '∅': '', '³': '3', 'π': 'pi', }
+               '∅': '', '³': '3', 'π': 'pi'}
 
     for p in mapping:
         text = text.replace(p, mapping[p])
 
     for p in punct:
-        text = text.replace(p, ' ' + p + ' ')
+        text = text.replace(p, '')
 
-    specials = {'\u200b': ' ', '…': ' ... ', '\ufeff': '', 'करना': '', 'है': ''}
+    specials = {'\u200b': '', '…': '', '\ufeff': '', 'करना': '', 'है': ''}
     for s in specials:
         text = text.replace(s, specials[s])
 
     return text.strip()
 
 
-def clean_text(texts):
-    corpus = []
-    for i in range(0, len(texts)):
-        review = re.sub(r'[@%\\*=()/~#&\+á?\xc3\xa1\-\|\.\:\;\!\-\,\_\~\$\'\"]', '',
-                        str(texts[i]))  # remove punctuation
-        review = re.sub(r'\d+', '', str(texts[i]))  # remove number
-        review = review.lower()  # lower case
-        review = re.sub(r'\s+', ' ', review)  # remove extra space
-        review = re.sub(r'<[^>]+>', '', review)  # remove Html tags
-        review = re.sub(r'\s+', ' ', review)  # remove spaces
-        review = re.sub(r"^\s+", '', review)  # remove space from start
-        review = re.sub(r'\s+$', '', review)  # remove space from the end
-        corpus.append(review)
-    return corpus
+# Convert documents to vectors
+def average_word2vec(doc, model):
+    vectors = [model.wv[word] for word in doc if word in model.wv]
+    if vectors:
+        return np.mean(vectors, axis=0)
+    else:
+        return np.zeros(model.vector_size)  # Return a zero vector if no words in the model
+
+
+def vectorize(articles, scaler: MinMaxScaler = MinMaxScaler()):
+    refined_document = [clean_punc(txt) for txt in articles]
+
+    okt = Okt()
+
+    tokenized_data = []
+    ready = tqdm(refined_document)
+
+    for sentence in ready:
+        tokenized_sentence = okt.morphs(sentence, stem=True)  # 토큰화
+        stopwords_removed_sentence = [word for word in tokenized_sentence if not word in STOP_WORDS]  # 불용어 제거
+        tokenized_data.append(stopwords_removed_sentence)
+
+    model = Word2Vec(sentences=tokenized_data, vector_size=100, window=5, min_count=1, workers=4)
+
+    doc_vectors = [average_word2vec(doc, model) for doc in tokenized_data]
+
+    scaled_vectors = scaler.fit_transform(doc_vectors)
+
+    return scaled_vectors
