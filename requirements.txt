@@ -9,4 +9,5 @@ matplotlib
 pyprnt
 tqdm
 imbalanced-learn
-auto-sklearn
+h2o
+nltk
