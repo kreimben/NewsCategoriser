@@ -9,3 +9,4 @@ matplotlib
 pyprnt
 tqdm
 imbalanced-learn
+auto-sklearn
